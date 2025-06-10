@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Task Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
+    h1 { text-align: center; }
+    form, .filters, .sort-options { margin-bottom: 1rem; }
+    input, select, button { margin-right: 0.5rem; padding: 0.5rem; }
+    ul { list-style-type: none; padding: 0; }
+    li { background: white; margin-bottom: 0.5rem; padding: 0.75rem; border-left: 5px solid grey; display: flex; justify-content: space-between; align-items: center; }
+    li.completed { text-decoration: line-through; opacity: 0.6; }
+    .urgent { border-color: red; }
+    .high { border-color: orange; }
+    .med { border-color: goldenrod; }
+    .low { border-color: green; }
+    .task-info { flex-grow: 1; }
+  </style>
+</head>
+<body>
+  <h1>Task Manager</h1>
+
+  <form id="taskForm">
+    <input type="text" id="taskName" placeholder="Task name" required>
+    <input type="date" id="dueDate" required>
+    <select id="taskType">
+      <option>home</option>
+      <option>school</option>
+      <option>work</option>
+      <option>project1</option>
+      <option>project2</option>
+    </select>
+    <select id="priority">
+      <option value="urgent">Urgent</option>
+      <option value="high">High</option>
+      <option value="med">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <button type="submit">Add Task</button>
+  </form>
+
+  <div class="filters">
+    <label>Show:
+      <select id="filterStatus">
+        <option value="all">All</option>
+        <option value="completed">Completed</option>
+        <option value="pending">Pending</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="sort-options">
+    <label>Sort by:
+      <select id="sortBy">
+        <option value="dueDate">Due Date</option>
+        <option value="priority">Priority</option>
+      </select>
+    </label>
+  </div>
+
+  <ul id="taskList"></ul>
+
+  <script>
+    const taskForm = document.getElementById('taskForm');
+    const taskList = document.getElementById('taskList');
+    const filterStatus = document.getElementById('filterStatus');
+    const sortBy = document.getElementById('sortBy');
+
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+    const priorityOrder = { urgent: 1, high: 2, med: 3, low: 4 };
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      const filter = filterStatus.value;
+      const sort = sortBy.value;
+
+      let filteredTasks = tasks.slice();
+
+      if (filter === 'completed') filteredTasks = filteredTasks.filter(t => t.completed);
+      if (filter === 'pending') filteredTasks = filteredTasks.filter(t => !t.completed);
+
+      if (sort === 'dueDate') {
+        filteredTasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+      } else if (sort === 'priority') {
+        filteredTasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+      }
+
+      taskList.innerHTML = '';
+      filteredTasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.className = `${task.priority} ${task.completed ? 'completed' : ''}`;
+
+        const taskInfo = document.createElement('div');
+        taskInfo.className = 'task-info';
+        taskInfo.innerHTML = `<strong>${task.name}</strong> [${task.type}] - Due: ${task.dueDate}`;
+
+        const actions = document.createElement('div');
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = task.completed ? 'Undo' : 'Done';
+        toggleBtn.onclick = () => {
+          tasks[index].completed = !tasks[index].completed;
+          saveTasks(); renderTasks();
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = () => {
+          tasks.splice(index, 1);
+          saveTasks(); renderTasks();
+        };
+
+        actions.appendChild(toggleBtn);
+        actions.appendChild(deleteBtn);
+
+        li.appendChild(taskInfo);
+        li.appendChild(actions);
+        taskList.appendChild(li);
+      });
+    }
+
+    taskForm.onsubmit = e => {
+      e.preventDefault();
+      const name = document.getElementById('taskName').value.trim();
+      const dueDate = document.getElementById('dueDate').value;
+      const type = document.getElementById('taskType').value;
+      const priority = document.getElementById('priority').value;
+
+      if (name && dueDate) {
+        tasks.push({ name, dueDate, type, priority, completed: false });
+        saveTasks();
+        taskForm.reset();
+        renderTasks();
+      }
+    };
+
+    filterStatus.onchange = renderTasks;
+    sortBy.onchange = renderTasks;
+
+    renderTasks();
+  </script>
+</body>
+</html>
